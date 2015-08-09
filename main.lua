@@ -3,7 +3,8 @@ love.window.setMode(700, 700, {resizable=false, vsync=false})
 
 -- run on load or on reset
 function love.load()
-    print("[q] or [esc] to quit\n[r] to restart\n[f] to toggle fullscreen\n\n←/→ to decrease/increase jump\n↑/↓ to increase/decrease gravity\n---------------------------")
+    -- print("[q] or [esc] to quit\n[r] to restart\n[f] to toggle fullscreen\n\n←/→ to decrease/increase jump\n↑/↓ to increase/decrease gravity\n---------------------------")
+    print("---------------------------\n[q] to quit\n[r] to restart\n[f] to toggle fullscreen\n[esc] to pause\n[space] to jump\n---------------------------")
     sloth = {
         x = 100,
         y = love.graphics.getHeight() * .6,
@@ -24,6 +25,9 @@ function love.load()
     timeUntilWalls = 3
     timeBetweenWalls = 1.5
     timeSinceLastWall = timeBetweenWalls
+    lost = false
+    font = love.graphics.newFont("GrilledCheeseBTNWide.ttf", 24)
+    love.graphics.setFont(font)
 end
 
 function jump()
@@ -74,6 +78,7 @@ end
 function gameOver()
     print("Game Over")
     paused = true
+    lost = true
 end
 
 function love.keypressed(key)
@@ -147,6 +152,7 @@ function love.draw()
     local y = MAXY - sloth.y
     local x = sloth.x
     love.graphics.setColor(255,255,255)
+
     -- draw the 'sloth'
     love.graphics.circle("fill", x, y, sloth.r, 100)
     love.graphics.setColor(0,0,0)
@@ -154,11 +160,27 @@ function love.draw()
     love.graphics.line(linePos(x, y))
 
     -- draw the walls
-    love.graphics.setColor(255,0,0)
-    love.graphics.setLineWidth(20)
     for i, w in ipairs(walls) do
+        love.graphics.setColor(255,0,0)
+        love.graphics.setLineWidth(20)
         love.graphics.line(w.x, 0, w.x, w.gapY)
         love.graphics.line(w.x, w.gapY + GAPSIZE, w.x, love.graphics.getHeight())
+
+        love.graphics.setColor(255,255,255)
+        love.graphics.setLineWidth(1)
+        love.graphics.line(w.x, 0, w.x, w.gapY)
+        love.graphics.line(w.x, w.gapY + GAPSIZE, w.x, love.graphics.getHeight())
+    end
+
+    love.graphics.setColor(255,255,255)
+    -- text
+    love.graphics.printf("score: "..score, 0, 1, love.graphics.getWidth(), "center")
+    if paused then
+        if lost then
+            love.graphics.printf("game over\n[r]estart\n[q]uit", 0, love.graphics.getHeight() / 2, love.graphics.getWidth(), "center")
+        else
+            love.graphics.printf("paused\n[esc] to resume", 0, love.graphics.getHeight() / 2, love.graphics.getWidth(), "center")
+        end
     end
 end
 
@@ -167,13 +189,6 @@ end
 -- at v >= ANGV, line is tilted 45 degrees up
 -- at v <= -ANGV, line is tilted 45 degrees down
 function linePos(cx, cy)
-    -- local v = sloth.v
-    -- if sloth.v > ANGV then
-    --     v = ANGV
-    -- elseif sloth.v < ANGV then
-    --     v = -ANGV
-    -- end
-    -- why doesn't this work? namespace weirdness????????????
     local angle = (math.pi / 4) * (sloth.v / ANGV)
     return {
         cx, cy,
@@ -183,7 +198,7 @@ function linePos(cx, cy)
 end
 
 
--- COLOR STUF--
+-- COLOR STUFF--
 
 -- returns a random rgb color
 function randColor()
@@ -211,55 +226,55 @@ function toRGB(h, s, v)
     local m, r, g, b = (v - c), 0, 0, 0
     if h < 1 then
         r, g, b = c, x, 0
-    elseif h < 2 then
-        r, g, b = x, c, 0
-    elseif h < 3 then
-        r, g, b = 0, c, x
-    elseif h < 4 then
-        r, g, b = 0, x, c
-    elseif h < 5 then
-        r, g, b = x, 0, c
-    else
-        r, g, b = c, 0, x
-    end
-    return (r + m) * 255, (g + m) * 255, (b + m) * 255
-end
+        elseif h < 2 then
+            r, g, b = x, c, 0
+            elseif h < 3 then
+                r, g, b = 0, c, x
+                elseif h < 4 then
+                    r, g, b = 0, x, c
+                    elseif h < 5 then
+                        r, g, b = x, 0, c
+                    else
+                        r, g, b = c, 0, x
+                    end
+                    return (r + m) * 255, (g + m) * 255, (b + m) * 255
+                end
 
--- convert rgb into hsv
-function toHSV(r, g, b)
-    r, g, b = r / 255, g / 255, b / 255
-    local min, max = math.min(r, g, b), math.max(r, g, b)
-    local del = max - min
-    local h, s, v = 0, 0, 0
-    v = max
+                -- convert rgb into hsv
+                function toHSV(r, g, b)
+                    r, g, b = r / 255, g / 255, b / 255
+                    local min, max = math.min(r, g, b), math.max(r, g, b)
+                    local del = max - min
+                    local h, s, v = 0, 0, 0
+                    v = max
 
-    if del ~= 0 then
-        s = del / max
-        d = {
-            r = (((max - r) / 6) + (del / 2)) / del,
-            g = (((max - g) / 6) + (del / 2)) / del,
-            b = (((max - b) / 6) + (del / 2)) / del
-        }
-        if r == max then
-            h = d.b - d.g
-        elseif g == max then
-            h = (1 / 3) + d.r - d.b
-        elseif b == max then
-            h = (2 / 3) + d.g - d.r
-        end
-        if h < 0 then
-            h = h + 1
-        elseif h > 1 then
-            h = h - 1
-        end
-    end
-    return h * 255, s * 255, v * 255
-end
+                    if del ~= 0 then
+                        s = del / max
+                        d = {
+                            r = (((max - r) / 6) + (del / 2)) / del,
+                            g = (((max - g) / 6) + (del / 2)) / del,
+                            b = (((max - b) / 6) + (del / 2)) / del
+                        }
+                        if r == max then
+                            h = d.b - d.g
+                            elseif g == max then
+                                h = (1 / 3) + d.r - d.b
+                                elseif b == max then
+                                    h = (2 / 3) + d.g - d.r
+                                end
+                                if h < 0 then
+                                    h = h + 1
+                                    elseif h > 1 then
+                                        h = h - 1
+                                    end
+                                end
+                                return h * 255, s * 255, v * 255
+                            end
 
--- returns rgba for opposite color
-function oppositeColor(r, g, b, a)
-    local h, s, v = toHSV(r, g, b)
-    h = (h + (256 / 2)) % 256
-    r, g, b = toRGB(h, s, v)
-    return r, g, b, a
-end
+                            -- returns rgba for opposite color
+                            function oppositeColor(r, g, b, a)
+                                local h, s, v = toHSV(r, g, b)
+                                h = (h + (256 / 2)) % 256
+                                r, g, b = toRGB(h, s, v)
+                                return r, g, b, a
+                            end
